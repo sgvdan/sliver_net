@@ -23,16 +23,16 @@ else:
 
 def load_backbone(model_name):
 
-    kermany_pretrained_weights = "/opt/data/commonfilesharePHI/jnchiang/projects/Ophth/iRORAcRORA/models/kermany_pretrained.pth"
+    kermany_pretrained_weights = "/home/projects/ronen/sgvdan/workspace/sliver_net/playground/resnet18.pth"
 
     if "imagenet" in str(model_name).lower():
         logging.info("Loading ImageNet Model")
         model = tmodels.resnet18(pretrained=True)
-    elif "kermany" in str(model_name).lower():
-        logging.info("Loading model from Kermany")
+    elif "sgvdan-kermany" in str(model_name).lower():
+        print("Loading sgvdan-kermany model")
         model = tmodels.resnet18(num_classes=4, pretrained=False)
         model_weights = kermany_pretrained_weights
-        model.load_state_dict(torch.load(model_weights, map_location=torch.device("cuda"))['model'])
+        model.load_state_dict(torch.load(model_weights, map_location=torch.device("cuda"))['model_state_dict'])
     elif "sliver" in str(model_name).lower():
         logging.info("Loading model from Kermany for SLIVER-NET")
         model = tmodels.resnet18(num_classes=4, pretrained=False)
@@ -99,6 +99,7 @@ class FeatureCNN2(torch.nn.Module):
         x = self.conv2(x)
         # x: B x C x N - 2(kernel_size-1) // 1
         x = F.relu(x)
+
         if(self.add_layers):
             x = self.poolMid(x)
             # x: B x C x (N - (2(kernel_size-1) // 1) // pool_size) + 1
@@ -170,6 +171,7 @@ class SliverNet2(torch.nn.Module):
         x = nonadaptiveconcatpool2d(x, kernel_size) # pool the feature maps with kernel and stride W
         # B x C x n_slices x 1
         x = x.squeeze(dim=-1)
+
         # B x C x n_slices
         return self.cov_model(x,cov)  # 1d cnn, etc
 
