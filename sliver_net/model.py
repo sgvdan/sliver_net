@@ -23,7 +23,8 @@ else:
 
 def load_backbone(model_name):
 
-    kermany_pretrained_weights = "/home/projects/ronen/sgvdan/workspace/sliver_net/playground/resnet18.pth"
+    kermany_pretrained_weights = "/home/projects/ronen/sgvdan/workspace/projects/sliver_net/playground/resnet18.pth"
+    hadassah_model_path = "/home/projects/ronen/sgvdan/workspace/projects/OCT-DL/Models/resnet18_nominal.pth"
 
     if "imagenet" in str(model_name).lower():
         logging.info("Loading ImageNet Model")
@@ -33,6 +34,11 @@ def load_backbone(model_name):
         model = tmodels.resnet18(num_classes=4, pretrained=False)
         model_weights = kermany_pretrained_weights
         model.load_state_dict(torch.load(model_weights, map_location=torch.device("cuda"))['model_state_dict'])
+    elif "sgvdan-hadassah" in str(model_name).lower():
+        print("loading sgvdan-kermany model from: {0}".format(hadassah_model_path), flush=True)
+        model = tmodels.resnet18(num_classes=2, pretrained=False)
+        states_dict = torch.load(hadassah_model_path, map_location=torch.device("cuda"))
+        model.load_state_dict(states_dict['model_state_dict'])
     elif "sliver" in str(model_name).lower():
         logging.info("Loading model from Kermany for SLIVER-NET")
         model = tmodels.resnet18(num_classes=4, pretrained=False)
@@ -91,7 +97,7 @@ class FeatureCNN2(torch.nn.Module):
         self.fc1 = torch.nn.Linear(self._conv_filters + ncov, FC1_OUT)
         self.fc2 = torch.nn.Linear(FC1_OUT, n_out)
 
-    def forward(self,x,cov=None):
+    def forward(self,x, sizes,cov=None):
         # x: B x C x N
         x = self.conv1(x)
         # x: B x C x N-(kernel_size-1) // 1
@@ -110,7 +116,14 @@ class FeatureCNN2(torch.nn.Module):
             x = self.conv4(x)
             x = F.relu(x)
 
-        x, idx = self.pool(x)
+        y = []
+        temp = torch.tensor_split(x, sizes, dim=2)
+        for x_sample in temp:
+            if x_sample.nelement() != 0:
+                x, _ = self.pool(x_sample)
+                y.append(x)
+
+        x = torch.stack(y)
         # x: B x C x 1
         x = x.view(-1, self._conv_filters)
         # x: B x C

@@ -11,9 +11,6 @@ from skimage import exposure
 import torchvision
 from tqdm import tqdm
 
-""" NOTE: This is just a sample dataset... it's not guaranteed that this will work"""
-
-
 class E2ETileDataset(Dataset):
     def __init__(self, cache, transform):
         """
@@ -81,3 +78,19 @@ def build_volume_cache(cache, path, label):
                             print("Ignored volume {0} in sample {1}. An exception of type {2} occurred. \
                                        Arguments:\n{1!r}".format(volume.patient_id, sample, type(ex).__name__, ex.args))
                             continue
+
+
+def variable_size_collate(batch_list):
+    tensors, labels, indices = [], [], []
+    idx = 0
+    for tensor, label in batch_list:
+        tensors.append(tensor)
+        labels.append(label)
+
+        idx += tensor.size(1)//256
+        indices.append(idx)
+
+    batch_tensor = torch.cat(tensors, dim=1).unsqueeze(dim=0)
+    batch_labels = torch.stack(labels)
+
+    return batch_tensor, indices, batch_labels
