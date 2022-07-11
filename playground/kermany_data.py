@@ -52,19 +52,25 @@ class KermanyDataset(Dataset):
 
         if self.mode == 0:
             imt = image
-        if self.mode == 1:
+        elif self.mode == 1:
             imt = torch.concat([mask, image], dim=0)
-        if self.mode == 2:
+        elif self.mode == 2:
             channel_mask = torch.concat([(mask == value) for value in mask_values], dim=0).type(torch.uint8) * 255
             imt = torch.concat([channel_mask, image], dim=0)
-        if self.mode == 3:
+        elif self.mode == 3:
             imt = torch.concat([torch.zeros_like(mask), image], dim=0)
-        if self.mode == 4:
+        elif self.mode == 4:
             mask[mask == 26] = 0
             mask[mask == 51] = 0
             imt = torch.concat([mask, image], dim=0)
-        if self.mode == 5:
+        elif self.mode == 5:
             fg_channel_mask = torch.concat([(mask == value) for value in fg_mask_values], dim=0).type(torch.uint8) * 255
             imt = torch.concat([fg_channel_mask, image], dim=0)
+        elif 6 <= self.mode <= 15:
+            value = mask_values[self.mode - 6]
+            single_channel_mask = (mask == value).type(torch.uint8) * 255
+            imt = torch.concat([single_channel_mask, image], dim=0)
+        else:
+            raise NotImplementedError
 
         return imt, label

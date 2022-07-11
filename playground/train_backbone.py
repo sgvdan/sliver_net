@@ -27,7 +27,7 @@ mask_resize_transform = torchvision.transforms.Resize((256, 256), InterpolationM
 
 resnet18 = torchvision.models.resnet18(num_classes=4, pretrained=False)
 if mode == 0:
-    print('image')
+    print('image', flush=True)
     resnet18.conv1 = Conv2d(1, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
 elif mode == 1:
     print('mask, image', flush=True)
@@ -46,6 +46,9 @@ elif mode == 4:
 elif mode == 5:
     print('channel(foreground), channel(foreground), ..., channel(foreground), image', flush=True)
     resnet18.conv1 = Conv2d(9, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
+elif 6 <= mode <= 15:
+    print('single channel: {}'.format(mode-6))
+    resnet18.conv1 = Conv2d(2, 64, kernel_size=(7, 7), stride=(2, 2), padding=(3, 3), bias=False)
 else:
     print('Unsupported', flush=True)
     exit(0)
@@ -54,7 +57,6 @@ resnet18 = resnet18.cuda()
 
 criterion = torch.nn.functional.cross_entropy
 optimizer = torch.optim.Adam(resnet18.parameters(), lr=1e-5)
-optimizer2 = torch.optim.Adam(resnet18.parameters(), lr=1e-6)
 
 data.LABELS = KERMANY_LABELS
 
@@ -67,18 +69,15 @@ val_loader = torch.utils.data.DataLoader(dataset=val_dataset, batch_size=64, shu
 train_dataset = KermanyDataset('/home/projects/ronen/sgvdan/workspace/datasets/kermany/original/train',
                                '/home/projects/ronen/sgvdan/workspace/datasets/kermany/layer-segmentation/train',
                                mode=mode, image_transform=resize_transform, mask_transform=mask_resize_transform)
-train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=1, shuffle=True)
+train_loader = torch.utils.data.DataLoader(dataset=train_dataset, batch_size=64, shuffle=True)
 
-for i in range(0, 30):
-    if i < 15:
-        opt = optimizer
-    else:
-        opt = optimizer2
+# print('CHANGED IMAGE READ METHOD TO ToTensor()(Image.open(...))', flush=True)
 
-    train(resnet18, criterion, opt, train_loader, val_loader, 1, 'cuda', 'ResNet18-Kermany')
+for i in range(0, 10):
+    train(resnet18, criterion, optimizer, train_loader, val_loader, 1, 'cuda', 'ResNet18-Kermany')
 
     # Save temporarily, so that the model won't disappear
-    tmp_model_name = 'backbones2/model-{}-epoch-{}.pth'.format(mode, i+1)
+    tmp_model_name = 'single-channel-backbones/mode-{}-epoch-{}.pth'.format(mode, i+1)
     torch.save({"model_state_dict": resnet18.state_dict(),
                 "optimizer_state_dict": optimizer.state_dict()
                 }, tmp_model_name)
